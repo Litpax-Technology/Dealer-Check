@@ -2,7 +2,7 @@
    LITPAX DEALER AUTHORITY — app.js
    CONFIG — GAS Web App URL yahan paste karo (Deploy ke baad /exec wala)
    ===================================================================== */
-const GAS_URL = "";   // <-- e.g. "https://script.google.com/macros/s/AKfyc...../exec"
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyR54j2xf4S_WnAkQ_AvkQG8SuIL1dtK9o2wMnZkrfki4fnYg_unQ7CNHc6ELSwwM_P2g/exec";   // <-- e.g. "https://script.google.com/macros/s/AKfyc...../exec"
 
 /* Fallback demo data (GAS_URL blank ho ya fetch fail ho to) */
 let DEALERS = [
