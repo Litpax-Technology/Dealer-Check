@@ -2,7 +2,7 @@
    LITPAX DEALER AUTHORITY — app.js
    CONFIG — GAS Web App URL yahan paste karo (Deploy ke baad /exec wala)
    ===================================================================== */
-const GAS_URL = "https://script.google.com/macros/s/AKfycbyR54j2xf4S_WnAkQ_AvkQG8SuIL1dtK9o2wMnZkrfki4fnYg_unQ7CNHc6ELSwwM_P2g/exec";   // <-- e.g. "https://script.google.com/macros/s/AKfyc...../exec"
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyR54j2xf4S_WnAkQ_AvkQG8SuIL1dtK9o2wMnZkrfki4fnYg_unQ7CNHc6ELSwwM_P2g/exec";
 
 /* Fallback demo data (GAS_URL blank ho ya fetch fail ho to) */
 let DEALERS = [
@@ -216,8 +216,9 @@ async function doCheck(){
       renderError(`PIN <b>${pin}</b> ka koi record nahi mila. PIN check karke dobara try karo.`);
       return;
     }
-    const po = data[0].PostOffice[0];
-    renderResult(pin, po.Name, po.District, po.State, findDealer(po.State, po.District));
+    const poList = data[0].PostOffice;
+    const po = poList[0];
+    renderResult(pin, poList, po.District, po.State, findDealer(po.State, po.District));
   }catch(err){
     renderError('Network error — PIN lookup fail ho gaya. Internet check karke dobara try karo.');
   }
@@ -241,20 +242,31 @@ function findDealer(state, district){
 }
 
 /* ---------- result render ---------- */
-function locStrip(area, district, state){
+function locStrip(pin, district, state, count){
   return `
   <div class="loc-strip">
-    <div class="loc-chip"><span class="lbl">Area</span><b>${esc(area)}</b></div>
+    <div class="loc-chip"><span class="lbl">PIN</span><b>${esc(pin)}</b></div>
     <div class="loc-chip"><span class="lbl">District</span><b>${esc(district)}</b></div>
     <div class="loc-chip"><span class="lbl">State</span><b>${esc(state)}</b></div>
+    <div class="loc-chip"><span class="lbl">Areas</span><b>${count}</b></div>
   </div>`;
 }
 
-function renderResult(pin, area, district, state, m){
+function areaCard(poList){
+  const names = poList.map(p => esc(p.Name)).join(' · ');
+  return `
+  <div class="dealer-card" style="border-left-color:var(--navy);">
+    <span class="badge" style="background:#e8eef8;color:var(--navy);">Is PIN ke areas</span>
+    <div class="note" style="margin-top:0;padding-top:0;border:none;color:var(--ink);font-size:.88rem;">${names}</div>
+  </div>`;
+}
+
+function renderResult(pin, poList, district, state, m){
   const result = $('resultWrap');
+  const head = locStrip(pin, district, state, poList.length) + areaCard(poList);
   if (m){
     const statusCls = (m.status || '').toLowerCase() === 'active' ? 'ok' : 'warn';
-    result.innerHTML = locStrip(area, district, state) + `
+    result.innerHTML = head + `
     <div class="dealer-card">
       <span class="badge ${statusCls}">${esc(m.status || 'Active')} · ${esc(m.type || 'Authorized')}</span>
       <h3>${esc(m.dealer)}</h3>
@@ -262,12 +274,10 @@ function renderResult(pin, area, district, state, m){
       <div class="grid">
         <div class="item"><div class="k">Authority</div><div class="v">${m.type === 'Exclusive State' ? esc(state) + ' (poori state)' : esc((m.districts||[]).join(', '))}</div></div>
         <div class="item"><div class="k">Contact</div><div class="v"><a href="tel:${esc(m.phone)}">${esc(m.phone || '—')}</a></div></div>
-        <div class="item"><div class="k">Agreement Since</div><div class="v">${esc(m.since || '—')}</div></div>
-        <div class="item"><div class="k">PIN Checked</div><div class="v">${pin}</div></div>
       </div>
     </div>`;
   } else {
-    result.innerHTML = locStrip(area, district, state) + `
+    result.innerHTML = head + `
     <div class="dealer-card none">
       <span class="badge warn">Open Territory</span>
       <h3>Koi authorized dealer nahi</h3>
