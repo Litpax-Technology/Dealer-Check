@@ -4,39 +4,48 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Litpax · Dealer Authority</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<header>
-  <div class="brand">
-    <div class="cellicon">L</div>
-    <div>
-      <h1>Dealer Authority</h1>
-      <small>Litpax Technology Pvt. Ltd. · Internal Tool</small>
+<!-- ================= HERO ================= -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="brand">
+      <div class="cellicon">L</div>
+      <div>
+        <h1>Dealer Authority</h1>
+        <small>Litpax Technology Pvt. Ltd.</small>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="check">PIN Check</div>
+      <div class="tab" data-tab="manage">Dealers Manage</div>
     </div>
   </div>
-</header>
-
-<div class="tabs">
-  <div class="tab active" data-tab="check">PIN Check</div>
-  <div class="tab" data-tab="manage">Dealers Manage</div>
 </div>
+
+<main>
 
 <!-- ================= TAB 1 : PIN CHECK ================= -->
 <div class="panel active" id="panel-check">
-  <div class="card">
-    <h2>PIN code se dealer check karein</h2>
-    <p class="sub">6-digit PIN dalo — city, state aur us area ka authorized Litpax dealer turant dikh jayega.</p>
+  <div class="card search-card">
+    <h2>PIN code dalo</h2>
+    <p class="sub">6 digit complete hote hi area aur dealer ki details apne aap aa jayengi.</p>
     <div class="pin-row" id="pinRow">
       <input class="pin-box" type="tel" maxlength="1" inputmode="numeric" aria-label="PIN digit 1">
       <input class="pin-box" type="tel" maxlength="1" inputmode="numeric" aria-label="PIN digit 2">
       <input class="pin-box" type="tel" maxlength="1" inputmode="numeric" aria-label="PIN digit 3">
+      <span class="pin-dash">–</span>
       <input class="pin-box" type="tel" maxlength="1" inputmode="numeric" aria-label="PIN digit 4">
       <input class="pin-box" type="tel" maxlength="1" inputmode="numeric" aria-label="PIN digit 5">
       <input class="pin-box" type="tel" maxlength="1" inputmode="numeric" aria-label="PIN digit 6">
+      <button class="clear-btn" id="clearBtn" title="Clear" aria-label="Clear PIN">✕</button>
     </div>
-    <button class="btn" id="checkBtn" disabled>Check Authority</button>
     <div class="src-tag" id="srcTag"></div>
   </div>
   <div id="resultWrap"></div>
@@ -67,18 +76,18 @@
       </div>
       <div class="field">
         <label>Districts</label>
-        <input id="f_districts" placeholder="Rohtak, Sonipat">
+        <input id="f_districts" placeholder="Sirsa, Fatehabad">
         <div class="hint">Comma se alag karo · <b>blank = poori state</b></div>
       </div>
     </div>
 
     <div class="frow">
-      <div class="field"><label>Dealer Name *</label><input id="f_dealer" placeholder="e.g. Rajesh Kumar"></div>
-      <div class="field"><label>Firm</label><input id="f_firm" placeholder="e.g. RK Battery House"></div>
+      <div class="field"><label>Dealer Name *</label><input id="f_dealer" placeholder="e.g. Ramesh Gupta"></div>
+      <div class="field"><label>Firm</label><input id="f_firm" placeholder="e.g. Gupta Battery House"></div>
     </div>
 
     <div class="frow">
-      <div class="field"><label>City</label><input id="f_city" placeholder="e.g. Rohtak"></div>
+      <div class="field"><label>City</label><input id="f_city" placeholder="e.g. Hisar"></div>
       <div class="field"><label>Phone</label><input id="f_phone" type="tel" placeholder="10-digit mobile"></div>
     </div>
 
@@ -117,8 +126,10 @@
   <div id="dealerList"><div class="spinner"></div></div>
 </div>
 
+</main>
+
 <div id="toast" role="status"></div>
-<footer>Litpax MIS · PIN data: India Post API · Dealer data: Google Sheet</footer>
+<footer>Litpax MIS · PIN data: India Post · Dealer data: Google Sheet</footer>
 
 <script src="app.js"></script>
 </body>
