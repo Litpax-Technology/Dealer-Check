@@ -1,16 +1,13 @@
 /* =====================================================================
-   LITPAX DEALER AUTHORITY — app.js
-   CONFIG — GAS Web App URL yahan paste karo (Deploy ke baad /exec wala)
+   LITPAX DEALER AUTHORITY — app.js  (auto-lookup version)
    ===================================================================== */
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyR54j2xf4S_WnAkQ_AvkQG8SuIL1dtK9o2wMnZkrfki4fnYg_unQ7CNHc6ELSwwM_P2g/exec";
 
-/* Fallback demo data (GAS_URL blank ho ya fetch fail ho to) */
-let DEALERS = [
-  { id:"DLR-1001", state:"Haryana", districts:[], districtsRaw:"", dealer:"Rajesh Kumar", firm:"RK Battery House", city:"Rohtak", phone:"9876500001", type:"Exclusive State", status:"Active", since:"2025-04-01" },
-  { id:"DLR-1002", state:"Punjab", districts:["Ludhiana","Moga"], districtsRaw:"Ludhiana, Moga", dealer:"Harpreet Singh", firm:"HS Power Solutions", city:"Ludhiana", phone:"9876500002", type:"District", status:"Active", since:"2025-06-15" }
-];
-let ONLINE = false;
+/* Fallback demo data (Sheet load fail ho to) */
+let DEALERS = [];
 let EDIT_ID = null;
+let lastCheckedPin = "";
+let debounceTimer = null;
 
 /* ---------- helpers ---------- */
 const $ = id => document.getElementById(id);
@@ -40,7 +37,6 @@ function toast(msg){
 /* ---------- load dealers (GET from GAS) ---------- */
 async function loadDealers(showToast){
   if (!GAS_URL){
-    ONLINE = false;
     $('srcTag').className = 'src-tag offline';
     $('srcTag').innerHTML = 'Data source: <b>Demo (GAS_URL set nahi hai)</b>';
     renderDealerList();
@@ -51,13 +47,11 @@ async function loadDealers(showToast){
     const d = await res.json();
     if (Array.isArray(d)){
       DEALERS = d;
-      ONLINE = true;
       $('srcTag').className = 'src-tag';
       $('srcTag').innerHTML = 'Data source: <b>Google Sheet (live)</b> · ' + DEALERS.length + ' dealers';
       if (showToast) toast('Dealer list refresh ho gayi ✓');
     }
   }catch(e){
-    ONLINE = false;
     $('srcTag').className = 'src-tag offline';
     $('srcTag').innerHTML = 'Data source: <b>Offline (Sheet load fail)</b>';
     if (showToast) toast('Sheet se load fail — internet/URL check karo');
@@ -65,7 +59,7 @@ async function loadDealers(showToast){
   renderDealerList();
 }
 
-/* ---------- save (add / update — POST to GAS) ---------- */
+/* ---------- save (add / update) ---------- */
 $('saveBtn').addEventListener('click', async () => {
   const data = {
     state:     $('f_state').value.trim(),
@@ -178,40 +172,76 @@ function renderDealerList(){
 
 $('refreshBtn').addEventListener('click', () => loadDealers(true));
 
-/* ---------- PIN input UX (OTP style) ---------- */
+/* =====================================================================
+   PIN INPUT — AUTO LOOKUP (no button)
+   6 digit complete → 350ms baad khud check ho jata hai
+   ===================================================================== */
 boxes.forEach((b, i) => {
   b.addEventListener('input', () => {
     b.value = b.value.replace(/\D/g,'').slice(0,1);
     b.classList.toggle('filled', !!b.value);
     if (b.value && i < 5) boxes[i+1].focus();
-    syncBtn();
+    onPinChange();
   });
   b.addEventListener('keydown', e => {
     if (e.key === 'Backspace' && !b.value && i > 0) boxes[i-1].focus();
-    if (e.key === 'Enter' && !$('checkBtn').disabled) doCheck();
   });
   b.addEventListener('paste', e => {
     e.preventDefault();
     const t = (e.clipboardData.getData('text')||'').replace(/\D/g,'').slice(0,6);
     t.split('').forEach((ch, j) => { boxes[j].value = ch; boxes[j].classList.add('filled'); });
     boxes[Math.min(t.length,5)].focus();
-    syncBtn();
+    onPinChange();
   });
 });
+
 function pinValue(){ return boxes.map(b=>b.value).join(''); }
-function syncBtn(){ $('checkBtn').disabled = pinValue().length !== 6; }
-$('checkBtn').addEventListener('click', doCheck);
+
+function onPinChange(){
+  const pin = pinValue();
+  $('clearBtn').classList.toggle('show', pin.length > 0);
+  clearTimeout(debounceTimer);
+
+  if (pin.length === 6){
+    if (pin === lastCheckedPin) return;   // same PIN dobara mat check karo
+    debounceTimer = setTimeout(() => doCheck(pin), 350);
+  } else {
+    // incomplete PIN — purana result hata do
+    lastCheckedPin = "";
+    hideResult();
+  }
+}
+
+$('clearBtn').addEventListener('click', () => {
+  boxes.forEach(b => { b.value = ''; b.classList.remove('filled'); });
+  lastCheckedPin = "";
+  hideResult();
+  $('clearBtn').classList.remove('show');
+  boxes[0].focus();
+});
+
+function hideResult(){
+  const r = $('resultWrap');
+  r.classList.remove('show');
+  r.style.display = 'none';
+  r.innerHTML = '';
+}
 
 /* ---------- PIN lookup (India Post API) ---------- */
-async function doCheck(){
-  const pin = pinValue();
+async function doCheck(pin){
+  lastCheckedPin = pin;
   const result = $('resultWrap');
   result.style.display = 'block';
+  result.classList.add('show');
   result.innerHTML = '<div class="spinner" role="status" aria-label="Loading"></div>';
 
   try{
     const res  = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
     const data = await res.json();
+
+    // agar user ne beech me PIN badal diya to purana response ignore karo
+    if (pin !== pinValue()) return;
+
     if (!data[0] || data[0].Status !== "Success" || !data[0].PostOffice){
       renderError(`PIN <b>${pin}</b> ka koi record nahi mila. PIN check karke dobara try karo.`);
       return;
@@ -253,11 +283,11 @@ function locStrip(pin, district, state, count){
 }
 
 function areaCard(poList){
-  const names = poList.map(p => esc(p.Name)).join(' · ');
+  const pills = poList.map(p => `<span class="area-pill">${esc(p.Name)}</span>`).join('');
   return `
-  <div class="dealer-card" style="border-left-color:var(--navy);">
-    <span class="badge" style="background:#e8eef8;color:var(--navy);">Is PIN ke areas</span>
-    <div class="note" style="margin-top:0;padding-top:0;border:none;color:var(--ink);font-size:.88rem;">${names}</div>
+  <div class="dealer-card info">
+    <span class="badge info">Is PIN ke areas</span>
+    <div class="areas-flow">${pills}</div>
   </div>`;
 }
 
@@ -272,9 +302,10 @@ function renderResult(pin, poList, district, state, m){
       <h3>${esc(m.dealer)}</h3>
       <div class="firm">${esc(m.firm || '')}${m.city ? ' · ' + esc(m.city) : ''}</div>
       <div class="grid">
-        <div class="item"><div class="k">Authority</div><div class="v">${m.type === 'Exclusive State' ? esc(state) + ' (poori state)' : esc((m.districts||[]).join(', '))}</div></div>
-        <div class="item"><div class="k">Contact</div><div class="v"><a href="tel:${esc(m.phone)}">${esc(m.phone || '—')}</a></div></div>
+        <div class="item"><div class="k">Authority Area</div><div class="v">${m.type === 'Exclusive State' ? esc(state) + ' (poori state)' : esc((m.districts||[]).join(', '))}</div></div>
+        <div class="item"><div class="k">Agreement Since</div><div class="v">${esc(m.since || '—')}</div></div>
       </div>
+      ${m.phone ? `<a class="call-btn" href="tel:${esc(m.phone)}">📞 ${esc(m.phone)}</a>` : ''}
     </div>`;
   } else {
     result.innerHTML = head + `
@@ -298,3 +329,4 @@ function renderError(msg){
 
 /* ---------- init ---------- */
 loadDealers();
+boxes[0].focus();
