@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Litpax · Dealer Authority</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="cellicon">L</div>
+    <div>
+      <h1>Dealer Authority</h1>
+      <small>Litpax Technology Pvt. Ltd. · Internal Tool</small>
+    </div>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="check">PIN Check</div>
+  <div class="tab" data-tab="manage">Dealers Manage</div>
+</div>
+
+<!-- ================= TAB 1 : PIN CHECK ================= -->
+<div class="panel active" id="panel-check">
+  <div class="card">
+    <h2>PIN code se dealer check karein</h2>
+    <p class="sub">6-digit PIN dalo — city, state aur us area ka authorized Litpax dealer turant dikh jayega.</p>
+    <div class="pin-row" id="pinRow">
+      <input class="pin-box" type="tel" maxlength="1" inputmode="numeric" aria-label="PIN digit 1">
+      <input class="pin-box" type="tel" maxlength="1" inputmode="numeric" aria-label="PIN digit 2">
+      <input class="pin-box" type="tel" maxlength="1" inputmode="numeric" aria-label="PIN digit 3">
+      <input class="pin-box" type="tel" maxlength="1" inputmode="numeric" aria-label="PIN digit 4">
+      <input class="pin-box" type="tel" maxlength="1" inputmode="numeric" aria-label="PIN digit 5">
+      <input class="pin-box" type="tel" maxlength="1" inputmode="numeric" aria-label="PIN digit 6">
+    </div>
+    <button class="btn" id="checkBtn" disabled>Check Authority</button>
+    <div class="src-tag" id="srcTag"></div>
+  </div>
+  <div id="resultWrap"></div>
+</div>
+
+<!-- ================= TAB 2 : MANAGE ================= -->
+<div class="panel" id="panel-manage">
+  <div class="card">
+    <h2 id="formTitle">Naya dealer add karo</h2>
+    <p class="sub">Save karte hi Google Sheet me entry ho jayegi — sabko turant dikhega.</p>
+
+    <div class="frow">
+      <div class="field">
+        <label>State *</label>
+        <input id="f_state" list="stateList" placeholder="e.g. Haryana">
+        <datalist id="stateList">
+          <option>Andhra Pradesh</option><option>Arunachal Pradesh</option><option>Assam</option>
+          <option>Bihar</option><option>Chhattisgarh</option><option>Delhi</option><option>Goa</option>
+          <option>Gujarat</option><option>Haryana</option><option>Himachal Pradesh</option>
+          <option>Jammu and Kashmir</option><option>Jharkhand</option><option>Karnataka</option>
+          <option>Kerala</option><option>Madhya Pradesh</option><option>Maharashtra</option>
+          <option>Manipur</option><option>Meghalaya</option><option>Mizoram</option><option>Nagaland</option>
+          <option>Odisha</option><option>Punjab</option><option>Rajasthan</option><option>Sikkim</option>
+          <option>Tamil Nadu</option><option>Telangana</option><option>Tripura</option>
+          <option>Uttar Pradesh</option><option>Uttarakhand</option><option>West Bengal</option>
+          <option>Chandigarh</option><option>Puducherry</option>
+        </datalist>
+      </div>
+      <div class="field">
+        <label>Districts</label>
+        <input id="f_districts" placeholder="Rohtak, Sonipat">
+        <div class="hint">Comma se alag karo · <b>blank = poori state</b></div>
+      </div>
+    </div>
+
+    <div class="frow">
+      <div class="field"><label>Dealer Name *</label><input id="f_dealer" placeholder="e.g. Rajesh Kumar"></div>
+      <div class="field"><label>Firm</label><input id="f_firm" placeholder="e.g. RK Battery House"></div>
+    </div>
+
+    <div class="frow">
+      <div class="field"><label>City</label><input id="f_city" placeholder="e.g. Rohtak"></div>
+      <div class="field"><label>Phone</label><input id="f_phone" type="tel" placeholder="10-digit mobile"></div>
+    </div>
+
+    <div class="frow">
+      <div class="field">
+        <label>Authority Type</label>
+        <select id="f_type">
+          <option>District</option>
+          <option>Exclusive State</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <select id="f_status">
+          <option>Active</option>
+          <option>Under Agreement</option>
+          <option>Inactive</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="frow">
+      <div class="field"><label>Agreement Since</label><input id="f_since" type="date"></div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn" id="saveBtn">Save Dealer</button>
+      <button class="btn ghost" id="cancelEditBtn" style="display:none;">Cancel Edit</button>
+    </div>
+  </div>
+
+  <div class="dlist-head">
+    <h2>Dealer List <span id="dCount" class="count"></span></h2>
+    <button class="refresh" id="refreshBtn">↻ Refresh</button>
+  </div>
+  <div id="dealerList"><div class="spinner"></div></div>
+</div>
+
+<div id="toast" role="status"></div>
+<footer>Litpax MIS · PIN data: India Post API · Dealer data: Google Sheet</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
