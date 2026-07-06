@@ -109,7 +109,7 @@ function startEdit(id){
   $('f_firm').value      = m.firm || '';
   $('f_city').value      = m.city || '';
   $('f_phone').value     = m.phone || '';
-  $('f_type').value      = m.type || 'District';
+  $('f_type').value      = m.type || 'Dealer';
   $('f_status').value    = m.status || 'Active';
   $('f_since').value     = m.since || '';
   $('formTitle').textContent = 'Dealer edit karo — ' + m.id;
@@ -122,7 +122,7 @@ $('cancelEditBtn').addEventListener('click', resetForm);
 function resetForm(){
   EDIT_ID = null;
   ['f_state','f_districts','f_dealer','f_firm','f_city','f_phone','f_since'].forEach(id => $(id).value = '');
-  $('f_type').value = 'District';
+  $('f_type').value = 'Dealer';
   $('f_status').value = 'Active';
   $('formTitle').textContent = 'Naya dealer add karo';
   $('saveBtn').textContent = 'Save Dealer';
@@ -151,13 +151,18 @@ function renderDealerList(){
   }
   const sorted = [...DEALERS].sort((a,b) => a.state.localeCompare(b.state));
   wrap.innerHTML = sorted.map(m => {
-    const terr = (m.districts && m.districts.length) ? m.districts.join(', ') : 'Poori state (Exclusive)';
+    const terr = (m.districts && m.districts.length) ? m.districts.join(', ') : 'Poori state';
     const sttCls = m.status === 'Active' ? 'Active' : (m.status === 'Inactive' ? 'Inactive' : 'UA');
+    const isDealer = (m.type || '').trim().toLowerCase() === 'dealer';
+    const canOrder = isDealer && m.status === 'Active';
+    const orderTag = canOrder
+      ? '<span class="stt Active">Sales: Active</span>'
+      : '<span class="stt Inactive">Sales: Deactivated</span>';
     return `
     <div class="drow">
       <div class="top">
         <div>
-          <div class="nm">${esc(m.dealer)} <span class="stt ${sttCls}">${esc(m.status)}</span></div>
+          <div class="nm">${esc(m.dealer)} <span class="stt UA">${esc(m.type || 'Dealer')}</span> <span class="stt ${sttCls}">${esc(m.status)}</span> ${orderTag}</div>
           <div class="meta">${esc(m.firm || '—')}${m.city ? ' · ' + esc(m.city) : ''}${m.phone ? ' · 📞 ' + esc(m.phone) : ''}${m.since ? ' · since ' + esc(m.since) : ''}</div>
           <div class="terr"><b>${esc(m.state)}</b> → ${esc(terr)}</div>
         </div>
@@ -295,25 +300,34 @@ function renderResult(pin, poList, district, state, m){
   const result = $('resultWrap');
   const head = locStrip(pin, district, state, poList.length) + areaCard(poList);
   if (m){
-    const statusCls = (m.status || '').toLowerCase() === 'active' ? 'ok' : 'warn';
+    // Dealer = sales order le sakte hain · Distributor/C&F = nahi
+    const isDealer  = (m.type || '').trim().toLowerCase() === 'dealer';
+    const isActive  = (m.status || '').toLowerCase() === 'active';
+    const canOrder  = isDealer && isActive;
+    const cardCls   = canOrder ? '' : 'none';
+    const orderStrip = canOrder
+      ? `<div class="order-strip allowed">✅ ACTIVE — Sales team yahan order le sakti hai</div>`
+      : `<div class="order-strip blocked">🚫 DEACTIVATED — Sales team yahan order <b>nahi</b> le sakti${!isDealer ? ' (' + esc(m.type) + ' territory)' : ' (partner ' + esc(m.status) + ' hai)'}</div>`;
+
     result.innerHTML = head + `
-    <div class="dealer-card">
-      <span class="badge ${statusCls}">${esc(m.status || 'Active')} · ${esc(m.type || 'Authorized')}</span>
+    <div class="dealer-card ${cardCls}">
+      <span class="badge ${canOrder ? 'ok' : 'warn'}">${esc(m.type || 'Dealer')} · ${esc(m.status || 'Active')}</span>
       <h3>${esc(m.dealer)}</h3>
       <div class="firm">${esc(m.firm || '')}${m.city ? ' · ' + esc(m.city) : ''}</div>
+      ${orderStrip}
       <div class="grid">
-        <div class="item"><div class="k">Authority Area</div><div class="v">${m.type === 'Exclusive State' ? esc(state) + ' (poori state)' : esc((m.districts||[]).join(', '))}</div></div>
+        <div class="item"><div class="k">Territory</div><div class="v">${(m.districts && m.districts.length) ? esc(m.districts.join(', ')) : esc(state) + ' (poori state)'}</div></div>
         <div class="item"><div class="k">Agreement Since</div><div class="v">${esc(m.since || '—')}</div></div>
       </div>
       ${m.phone ? `<a class="call-btn" href="tel:${esc(m.phone)}">📞 ${esc(m.phone)}</a>` : ''}
     </div>`;
   } else {
     result.innerHTML = head + `
-    <div class="dealer-card none">
-      <span class="badge warn">Open Territory</span>
-      <h3>Koi authorized dealer nahi</h3>
-      <div class="firm">${esc(district)}, ${esc(state)} me abhi Litpax ki dealer authority assign nahi hai.</div>
-      <div class="note">Naye dealer enquiry ke liye Sales team ko forward karo, ya direct order Litpax se process hoga.</div>
+    <div class="dealer-card">
+      <span class="badge ok">Open Territory</span>
+      <h3>Koi partner assigned nahi</h3>
+      <div class="firm">${esc(district)}, ${esc(state)} me abhi koi Dealer/Distributor/C&F nahi hai.</div>
+      <div class="order-strip allowed">✅ ACTIVE — Sales team yahan direct order le sakti hai</div>
     </div>`;
   }
 }
