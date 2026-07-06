@@ -1,11 +1,10 @@
 /* =====================================================================
-   LITPAX DEALER AUTHORITY — app.js  (auto-lookup version)
+   LITPAX DEALER AUTHORITY — app.js
+   Tabs: PIN Check (auto-lookup) · Add Dealer · Edit Dealer (dropdown)
    ===================================================================== */
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyR54j2xf4S_WnAkQ_AvkQG8SuIL1dtK9o2wMnZkrfki4fnYg_unQ7CNHc6ELSwwM_P2g/exec";
 
-/* Fallback demo data (Sheet load fail ho to) */
 let DEALERS = [];
-let EDIT_ID = null;
 let lastCheckedPin = "";
 let debounceTimer = null;
 
@@ -39,7 +38,6 @@ async function loadDealers(showToast){
   if (!GAS_URL){
     $('srcTag').className = 'src-tag offline';
     $('srcTag').innerHTML = 'Data source: <b>Demo (GAS_URL set nahi hai)</b>';
-    renderDealerList();
     return;
   }
   try{
@@ -56,10 +54,12 @@ async function loadDealers(showToast){
     $('srcTag').innerHTML = 'Data source: <b>Offline (Sheet load fail)</b>';
     if (showToast) toast('Sheet se load fail — internet/URL check karo');
   }
-  renderDealerList();
+  populateEditDropdown();
 }
 
-/* ---------- save (add / update) ---------- */
+/* =====================================================================
+   ADD DEALER
+   ===================================================================== */
 $('saveBtn').addEventListener('click', async () => {
   const data = {
     state:     $('f_state').value.trim(),
@@ -74,19 +74,18 @@ $('saveBtn').addEventListener('click', async () => {
   };
   if (!data.state || !data.dealer){ toast('State aur Dealer name required hai'); return; }
   if (data.phone && !/^\d{10}$/.test(data.phone)){ toast('Phone 10 digit ka hona chahiye'); return; }
-  if (!GAS_URL){ toast('Pehle GAS_URL set karo — abhi save nahi hoga'); return; }
+  if (!GAS_URL){ toast('Pehle GAS_URL set karo'); return; }
 
   $('saveBtn').disabled = true;
   $('saveBtn').textContent = 'Saving...';
   try{
-    const payload = EDIT_ID
-      ? { action:'update', id: EDIT_ID, data }
-      : { action:'add', data };
-    const res = await fetch(GAS_URL, { method:'POST', body: JSON.stringify(payload) });
+    const res = await fetch(GAS_URL, { method:'POST', body: JSON.stringify({ action:'add', data }) });
     const out = await res.json();
     if (out.ok){
-      toast(EDIT_ID ? 'Dealer update ho gaya ✓' : 'Naya dealer add ho gaya ✓');
-      resetForm();
+      toast('Naya dealer add ho gaya ✓');
+      ['f_state','f_districts','f_dealer','f_firm','f_city','f_phone','f_since'].forEach(id => $(id).value = '');
+      $('f_type').value = 'Dealer';
+      $('f_status').value = 'Active';
       await loadDealers();
     } else {
       toast('Error: ' + (out.msg || 'save fail'));
@@ -95,91 +94,96 @@ $('saveBtn').addEventListener('click', async () => {
     toast('Network error — save fail ho gaya');
   }
   $('saveBtn').disabled = false;
-  $('saveBtn').textContent = EDIT_ID ? 'Update Dealer' : 'Save Dealer';
+  $('saveBtn').textContent = 'Save Dealer';
 });
 
-/* ---------- edit ---------- */
-function startEdit(id){
+/* =====================================================================
+   EDIT DEALER (dropdown → form → update / delete)
+   ===================================================================== */
+function populateEditDropdown(){
+  const sel = $('editSelect');
+  const current = sel.value;
+  const sorted = [...DEALERS].sort((a,b) => a.state.localeCompare(b.state) || a.dealer.localeCompare(b.dealer));
+  sel.innerHTML = '<option value="">— Select dealer —</option>' +
+    sorted.map(m => {
+      const terr = (m.districts && m.districts.length) ? m.districts.join(', ') : 'Poori state';
+      return `<option value="${esc(m.id)}">${esc(m.state)} (${esc(terr)}) — ${esc(m.dealer)} · ${esc(m.type || 'Dealer')}</option>`;
+    }).join('');
+  // agar pehle se koi selected tha aur ab bhi list me hai to wapas select karo
+  if (current && DEALERS.some(m => m.id === current)) sel.value = current;
+  else { sel.value = ""; $('editForm').style.display = 'none'; }
+}
+
+$('editSelect').addEventListener('change', () => {
+  const id = $('editSelect').value;
+  if (!id){ $('editForm').style.display = 'none'; return; }
   const m = DEALERS.find(x => x.id === id);
   if (!m) return;
-  EDIT_ID = id;
-  $('f_state').value     = m.state;
-  $('f_districts').value = m.districtsRaw !== undefined ? m.districtsRaw : (m.districts||[]).join(', ');
-  $('f_dealer').value    = m.dealer;
-  $('f_firm').value      = m.firm || '';
-  $('f_city').value      = m.city || '';
-  $('f_phone').value     = m.phone || '';
-  $('f_type').value      = m.type || 'Dealer';
-  $('f_status').value    = m.status || 'Active';
-  $('f_since').value     = m.since || '';
-  $('formTitle').textContent = 'Dealer edit karo — ' + m.id;
-  $('saveBtn').textContent = 'Update Dealer';
-  $('cancelEditBtn').style.display = 'block';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-$('cancelEditBtn').addEventListener('click', resetForm);
+  $('e_state').value     = m.state;
+  $('e_districts').value = m.districtsRaw !== undefined ? m.districtsRaw : (m.districts||[]).join(', ');
+  $('e_dealer').value    = m.dealer;
+  $('e_firm').value      = m.firm || '';
+  $('e_city').value      = m.city || '';
+  $('e_phone').value     = m.phone || '';
+  $('e_type').value      = m.type || 'Dealer';
+  $('e_status').value    = m.status || 'Active';
+  $('e_since').value     = m.since || '';
+  $('editForm').style.display = 'block';
+});
 
-function resetForm(){
-  EDIT_ID = null;
-  ['f_state','f_districts','f_dealer','f_firm','f_city','f_phone','f_since'].forEach(id => $(id).value = '');
-  $('f_type').value = 'Dealer';
-  $('f_status').value = 'Active';
-  $('formTitle').textContent = 'Naya dealer add karo';
-  $('saveBtn').textContent = 'Save Dealer';
-  $('cancelEditBtn').style.display = 'none';
-}
+$('updateBtn').addEventListener('click', async () => {
+  const id = $('editSelect').value;
+  if (!id){ toast('Pehle dealer select karo'); return; }
+  const data = {
+    state:     $('e_state').value.trim(),
+    districts: $('e_districts').value.trim(),
+    dealer:    $('e_dealer').value.trim(),
+    firm:      $('e_firm').value.trim(),
+    city:      $('e_city').value.trim(),
+    phone:     $('e_phone').value.trim(),
+    type:      $('e_type').value,
+    status:    $('e_status').value,
+    since:     $('e_since').value
+  };
+  if (!data.state || !data.dealer){ toast('State aur Dealer name required hai'); return; }
+  if (data.phone && !/^\d{10}$/.test(data.phone)){ toast('Phone 10 digit ka hona chahiye'); return; }
 
-/* ---------- delete ---------- */
-async function delDealer(id, name){
-  if (!GAS_URL){ toast('Pehle GAS_URL set karo'); return; }
-  if (!confirm(name + ' ko delete karna hai? Ye Sheet se bhi hat jayega.')) return;
+  $('updateBtn').disabled = true;
+  $('updateBtn').textContent = 'Updating...';
+  try{
+    const res = await fetch(GAS_URL, { method:'POST', body: JSON.stringify({ action:'update', id, data }) });
+    const out = await res.json();
+    if (out.ok){ toast('Dealer update ho gaya ✓'); await loadDealers(); }
+    else toast('Error: ' + (out.msg || 'update fail'));
+  }catch(e){ toast('Network error — update fail'); }
+  $('updateBtn').disabled = false;
+  $('updateBtn').textContent = 'Update Dealer';
+});
+
+$('deleteBtn').addEventListener('click', async () => {
+  const id = $('editSelect').value;
+  if (!id){ toast('Pehle dealer select karo'); return; }
+  const m = DEALERS.find(x => x.id === id);
+  if (!confirm((m ? m.dealer : id) + ' ko delete karna hai? Ye Sheet se bhi hat jayega.')) return;
+
+  $('deleteBtn').disabled = true;
   try{
     const res = await fetch(GAS_URL, { method:'POST', body: JSON.stringify({ action:'delete', id }) });
     const out = await res.json();
-    if (out.ok){ toast('Dealer delete ho gaya'); await loadDealers(); }
-    else toast('Error: ' + (out.msg || 'delete fail'));
+    if (out.ok){
+      toast('Dealer delete ho gaya');
+      $('editSelect').value = "";
+      $('editForm').style.display = 'none';
+      await loadDealers();
+    } else toast('Error: ' + (out.msg || 'delete fail'));
   }catch(e){ toast('Network error — delete fail'); }
-}
-
-/* ---------- dealer list render ---------- */
-function renderDealerList(){
-  const wrap = $('dealerList');
-  $('dCount').textContent = '(' + DEALERS.length + ')';
-  if (!DEALERS.length){
-    wrap.innerHTML = '<div class="drow"><div class="meta">Abhi koi dealer nahi hai — upar form se pehla dealer add karo.</div></div>';
-    return;
-  }
-  const sorted = [...DEALERS].sort((a,b) => a.state.localeCompare(b.state));
-  wrap.innerHTML = sorted.map(m => {
-    const terr = (m.districts && m.districts.length) ? m.districts.join(', ') : 'Poori state';
-    const sttCls = m.status === 'Active' ? 'Active' : (m.status === 'Inactive' ? 'Inactive' : 'UA');
-    const isDealer = (m.type || '').trim().toLowerCase() === 'dealer';
-    const canOrder = isDealer && m.status === 'Active';
-    const orderTag = canOrder
-      ? '<span class="stt Active">Sales: Active</span>'
-      : '<span class="stt Inactive">Sales: Deactivated</span>';
-    return `
-    <div class="drow">
-      <div class="top">
-        <div>
-          <div class="nm">${esc(m.dealer)} <span class="stt UA">${esc(m.type || 'Dealer')}</span> <span class="stt ${sttCls}">${esc(m.status)}</span> ${orderTag}</div>
-          <div class="meta">${esc(m.firm || '—')}${m.city ? ' · ' + esc(m.city) : ''}${m.phone ? ' · 📞 ' + esc(m.phone) : ''}${m.since ? ' · since ' + esc(m.since) : ''}</div>
-          <div class="terr"><b>${esc(m.state)}</b> → ${esc(terr)}</div>
-        </div>
-        <div class="acts">
-          <button class="ico-btn" onclick="startEdit('${m.id}')">Edit</button>
-          <button class="ico-btn del" onclick="delDealer('${m.id}','${esc(m.dealer)}')">Delete</button>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
+  $('deleteBtn').disabled = false;
+});
 
 $('refreshBtn').addEventListener('click', () => loadDealers(true));
 
 /* =====================================================================
    PIN INPUT — AUTO LOOKUP (no button)
-   6 digit complete → 350ms baad khud check ho jata hai
    ===================================================================== */
 boxes.forEach((b, i) => {
   b.addEventListener('input', () => {
@@ -208,10 +212,9 @@ function onPinChange(){
   clearTimeout(debounceTimer);
 
   if (pin.length === 6){
-    if (pin === lastCheckedPin) return;   // same PIN dobara mat check karo
+    if (pin === lastCheckedPin) return;
     debounceTimer = setTimeout(() => doCheck(pin), 350);
   } else {
-    // incomplete PIN — purana result hata do
     lastCheckedPin = "";
     hideResult();
   }
@@ -243,8 +246,6 @@ async function doCheck(pin){
   try{
     const res  = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
     const data = await res.json();
-
-    // agar user ne beech me PIN badal diya to purana response ignore karo
     if (pin !== pinValue()) return;
 
     if (!data[0] || data[0].Status !== "Success" || !data[0].PostOffice){
@@ -300,17 +301,15 @@ function renderResult(pin, poList, district, state, m){
   const result = $('resultWrap');
   const head = locStrip(pin, district, state, poList.length) + areaCard(poList);
   if (m){
-    // Dealer = sales order le sakte hain · Distributor/C&F = nahi
     const isDealer  = (m.type || '').trim().toLowerCase() === 'dealer';
     const isActive  = (m.status || '').toLowerCase() === 'active';
     const canOrder  = isDealer && isActive;
-    const cardCls   = canOrder ? '' : 'none';
     const orderStrip = canOrder
       ? `<div class="order-strip allowed">✅ ACTIVE — Sales team yahan order le sakti hai</div>`
       : `<div class="order-strip blocked">🚫 DEACTIVATED — Sales team yahan order <b>nahi</b> le sakti${!isDealer ? ' (' + esc(m.type) + ' territory)' : ' (partner ' + esc(m.status) + ' hai)'}</div>`;
 
     result.innerHTML = head + `
-    <div class="dealer-card ${cardCls}">
+    <div class="dealer-card ${canOrder ? '' : 'none'}">
       <span class="badge ${canOrder ? 'ok' : 'warn'}">${esc(m.type || 'Dealer')} · ${esc(m.status || 'Active')}</span>
       <h3>${esc(m.dealer)}</h3>
       <div class="firm">${esc(m.firm || '')}${m.city ? ' · ' + esc(m.city) : ''}</div>
