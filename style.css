@@ -296,3 +296,10 @@ footer{margin-top:auto;padding:20px 0 30px;font-size:.74rem;color:var(--ink-soft
 }
 .order-strip.allowed{background:var(--volt-soft);color:#0a7a55;border:1px solid #bfe9d7;}
 .order-strip.blocked{background:var(--red-soft);color:var(--red);border:1px solid #f3c6c6;}
+
+/* ---------- danger button (delete) ---------- */
+.btn.danger{
+  background:linear-gradient(135deg, #c02626, #991b1b);
+  box-shadow:0 4px 14px rgba(185,28,28,.25);
+}
+.btn.danger:hover{box-shadow:0 6px 18px rgba(185,28,28,.32);}
