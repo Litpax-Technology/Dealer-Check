@@ -2,7 +2,7 @@
    LITPAX DEALER AUTHORITY — app.js
    Tabs: PIN Check (auto-lookup) · Add Dealer · Edit Dealer (dropdown)
    ===================================================================== */
-const GAS_URL = "https://script.google.com/macros/s/AKfycbyR54j2xf4S_WnAkQ_AvkQG8SuIL1dtK9o2wMnZkrfki4fnYg_unQ7CNHc6ELSwwM_P2g/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzdh_LJi4QJK6WLJcZwAsbp2Qi9ZPsseoImYBYxuUauApHwYZu74DnVlu2j6nNZ_Fox6g/exec";
 
 let DEALERS = [];
 let lastCheckedPin = "";
@@ -64,6 +64,7 @@ $('saveBtn').addEventListener('click', async () => {
   const data = {
     state:     $('f_state').value.trim(),
     districts: $('f_districts').value.trim(),
+    cities:    $('f_cities').value.trim(),
     dealer:    $('f_dealer').value.trim(),
     firm:      $('f_firm').value.trim(),
     city:      $('f_city').value.trim(),
@@ -83,7 +84,7 @@ $('saveBtn').addEventListener('click', async () => {
     const out = await res.json();
     if (out.ok){
       toast('Naya dealer add ho gaya ✓');
-      ['f_state','f_districts','f_dealer','f_firm','f_city','f_phone','f_since'].forEach(id => $(id).value = '');
+      ['f_state','f_districts','f_cities','f_dealer','f_firm','f_city','f_phone','f_since'].forEach(id => $(id).value = '');
       $('f_type').value = 'Dealer';
       $('f_status').value = 'Active';
       await loadDealers();
@@ -106,7 +107,9 @@ function populateEditDropdown(){
   const sorted = [...DEALERS].sort((a,b) => a.state.localeCompare(b.state) || a.dealer.localeCompare(b.dealer));
   sel.innerHTML = '<option value="">— Select dealer —</option>' +
     sorted.map(m => {
-      const terr = (m.districts && m.districts.length) ? m.districts.join(', ') : 'Poori state';
+      const terr = (m.cities && m.cities.length) ? m.cities.join(', ')
+                 : (m.districts && m.districts.length) ? m.districts.join(', ')
+                 : 'Poori state';
       return `<option value="${esc(m.id)}">${esc(m.state)} (${esc(terr)}) — ${esc(m.dealer)} · ${esc(m.type || 'Dealer')}</option>`;
     }).join('');
   // agar pehle se koi selected tha aur ab bhi list me hai to wapas select karo
@@ -121,6 +124,7 @@ $('editSelect').addEventListener('change', () => {
   if (!m) return;
   $('e_state').value     = m.state;
   $('e_districts').value = m.districtsRaw !== undefined ? m.districtsRaw : (m.districts||[]).join(', ');
+  $('e_cities').value    = m.citiesRaw !== undefined ? m.citiesRaw : (m.cities||[]).join(', ');
   $('e_dealer').value    = m.dealer;
   $('e_firm').value      = m.firm || '';
   $('e_city').value      = m.city || '';
@@ -137,6 +141,7 @@ $('updateBtn').addEventListener('click', async () => {
   const data = {
     state:     $('e_state').value.trim(),
     districts: $('e_districts').value.trim(),
+    cities:    $('e_cities').value.trim(),
     dealer:    $('e_dealer').value.trim(),
     firm:      $('e_firm').value.trim(),
     city:      $('e_city').value.trim(),
@@ -254,26 +259,46 @@ async function doCheck(pin){
     }
     const poList = data[0].PostOffice;
     const po = poList[0];
-    renderResult(pin, poList, po.District, po.State, findDealer(po.State, po.District));
+    renderResult(pin, poList, po.District, po.State, findDealer(po.State, po.District, poList));
   }catch(err){
     renderError('Network error — PIN lookup fail ho gaya. Internet check karke dobara try karo.');
   }
 }
 
-/* ---------- matching: district pehle, phir state ---------- */
-function findDealer(state, district){
-  const s = state.trim().toLowerCase();
-  const d = district.trim().toLowerCase();
+/* =====================================================================
+   3-LEVEL MATCHING (sabse specific pehle):
+   1. City-level  : state + district + PIN ke areas me dealer ki koi city
+   2. District    : state + district match, dealer ki cities BLANK ho
+   3. State-level : state match, dealer ke districts BLANK ho
+   ===================================================================== */
+const norm = t => String(t || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+function findDealer(state, district, poList){
+  const s = norm(state);
+  const d = norm(district);
+  const areaNames = (poList || []).map(p => norm(p.Name));
+
+  const stateMatch = x => norm(x.state) === s;
+  const distMatch  = x => Array.isArray(x.districts) && x.districts.length &&
+                          x.districts.some(dd => norm(dd) === d);
+  const hasCities  = x => Array.isArray(x.cities) && x.cities.length > 0;
+
+  // Level 1: city-level dealer — PIN ke kisi area name me dealer ki city match ho
   let m = DEALERS.find(x =>
-    x.state.trim().toLowerCase() === s &&
-    Array.isArray(x.districts) && x.districts.length &&
-    x.districts.some(dd => dd.trim().toLowerCase() === d)
+    stateMatch(x) && distMatch(x) && hasCities(x) &&
+    x.cities.some(c => {
+      const nc = norm(c);
+      return nc && areaNames.some(a => a === nc || a.includes(nc) || nc.includes(a));
+    })
   );
   if (m) return m;
-  m = DEALERS.find(x =>
-    x.state.trim().toLowerCase() === s &&
-    (!x.districts || x.districts.length === 0)
-  );
+
+  // Level 2: district-level dealer (cities blank waala hi)
+  m = DEALERS.find(x => stateMatch(x) && distMatch(x) && !hasCities(x));
+  if (m) return m;
+
+  // Level 3: state-level dealer (districts blank)
+  m = DEALERS.find(x => stateMatch(x) && (!x.districts || x.districts.length === 0));
   return m || null;
 }
 
@@ -315,7 +340,7 @@ function renderResult(pin, poList, district, state, m){
       <div class="firm">${esc(m.firm || '')}${m.city ? ' · ' + esc(m.city) : ''}</div>
       ${orderStrip}
       <div class="grid">
-        <div class="item"><div class="k">Territory</div><div class="v">${(m.districts && m.districts.length) ? esc(m.districts.join(', ')) : esc(state) + ' (poori state)'}</div></div>
+        <div class="item"><div class="k">Territory</div><div class="v">${(m.cities && m.cities.length) ? esc(m.cities.join(', ')) + ' (' + esc(m.districts.join(', ')) + ')' : (m.districts && m.districts.length) ? esc(m.districts.join(', ')) + ' (poora district)' : esc(state) + ' (poori state)'}</div></div>
         <div class="item"><div class="k">Agreement Since</div><div class="v">${esc(m.since || '—')}</div></div>
       </div>
       ${m.phone ? `<a class="call-btn" href="tel:${esc(m.phone)}">📞 ${esc(m.phone)}</a>` : ''}
