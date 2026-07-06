@@ -24,7 +24,8 @@
 
     <div class="tabs">
       <div class="tab active" data-tab="check">PIN Check</div>
-      <div class="tab" data-tab="manage">Dealers Manage</div>
+      <div class="tab" data-tab="manage">Add Dealer</div>
+      <div class="tab" data-tab="edit">Edit Dealer</div>
     </div>
   </div>
 </div>
@@ -51,10 +52,10 @@
   <div id="resultWrap"></div>
 </div>
 
-<!-- ================= TAB 2 : MANAGE ================= -->
+<!-- ================= TAB 2 : ADD DEALER ================= -->
 <div class="panel" id="panel-manage">
   <div class="card">
-    <h2 id="formTitle">Naya dealer add karo</h2>
+    <h2>Naya dealer add karo</h2>
     <p class="sub">Save karte hi Google Sheet me entry ho jayegi — sabko turant dikhega.</p>
 
     <div class="frow">
@@ -117,15 +118,78 @@
 
     <div class="form-actions">
       <button class="btn" id="saveBtn">Save Dealer</button>
-      <button class="btn ghost" id="cancelEditBtn" style="display:none;">Cancel Edit</button>
     </div>
   </div>
+</div>
 
-  <div class="dlist-head">
-    <h2>Dealer List <span id="dCount" class="count"></span></h2>
-    <button class="refresh" id="refreshBtn">↻ Refresh</button>
+<!-- ================= TAB 3 : EDIT DEALER ================= -->
+<div class="panel" id="panel-edit">
+  <div class="card">
+    <h2>Dealer edit / delete karo</h2>
+    <p class="sub">Dropdown se dealer select karo — details form me aa jayengi, phir Update ya Delete karo.</p>
+
+    <div class="frow" style="grid-template-columns:1fr auto;align-items:end;">
+      <div class="field">
+        <label>Dealer Select Karo</label>
+        <select id="editSelect">
+          <option value="">— Select dealer —</option>
+        </select>
+      </div>
+      <button class="refresh" id="refreshBtn" style="margin-bottom:1px;">↻ Refresh</button>
+    </div>
+
+    <div id="editForm" style="display:none;">
+      <div class="frow">
+        <div class="field">
+          <label>State *</label>
+          <input id="e_state" list="stateList">
+        </div>
+        <div class="field">
+          <label>Districts</label>
+          <input id="e_districts">
+          <div class="hint">Comma se alag karo · <b>blank = poori state</b></div>
+        </div>
+      </div>
+
+      <div class="frow">
+        <div class="field"><label>Dealer Name *</label><input id="e_dealer"></div>
+        <div class="field"><label>Firm</label><input id="e_firm"></div>
+      </div>
+
+      <div class="frow">
+        <div class="field"><label>City</label><input id="e_city"></div>
+        <div class="field"><label>Phone</label><input id="e_phone" type="tel"></div>
+      </div>
+
+      <div class="frow">
+        <div class="field">
+          <label>Partner Type</label>
+          <select id="e_type">
+            <option>Dealer</option>
+            <option>Distributor</option>
+            <option>C&amp;F</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select id="e_status">
+            <option>Active</option>
+            <option>Under Agreement</option>
+            <option>Inactive</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="frow">
+        <div class="field"><label>Agreement Since</label><input id="e_since" type="date"></div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn" id="updateBtn">Update Dealer</button>
+        <button class="btn danger" id="deleteBtn">Delete Dealer</button>
+      </div>
+    </div>
   </div>
-  <div id="dealerList"><div class="spinner"></div></div>
 </div>
 
 </main>
