@@ -2,7 +2,7 @@
    LITPAX DEALER AUTHORITY — app.js
    Tabs: PIN Check (auto-lookup) · Add Dealer · Edit Dealer (dropdown)
    ===================================================================== */
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzdh_LJi4QJK6WLJcZwAsbp2Qi9ZPsseoImYBYxuUauApHwYZu74DnVlu2j6nNZ_Fox6g/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbydZ4KMn6gOm6FO8Ygojr7H7iF7XfA7NPyihMF5GY1StBXmKY8ZiAmgOZKxVkcAY9sC2A/exec";
 
 let DEALERS = [];
 let lastCheckedPin = "";
