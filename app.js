@@ -276,15 +276,14 @@ const norm = t => String(t || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 function findDealer(state, district, poList){
   const s = norm(state);
   const d = norm(district);
-  // PIN ke matching tokens: area Name + Block + Taluk
-  // (badi cities me PO name "Malviya Nagar" jaisa hota hai, lekin Block/Taluk me
-  //  city ka naam hota hai — e.g. Jaipur city POs me Block = "Jaipur")
+  // PIN ke matching tokens: sirf area Names
+  // (Block/Taluk use NAHI karte — rural POs me bhi district ka naam hota hai
+  //  jisse galat match hota hai; city POs ke Names me city ka naam hota hai,
+  //  e.g. "Malviya Nagar (Jaipur)", "Mrec Jaipur")
   const areaNames = [];
   (poList || []).forEach(p => {
-    ['Name','Block','Taluk'].forEach(k => {
-      const v = norm(p[k]);
-      if (v && v !== 'na') areaNames.push(v);
-    });
+    const v = norm(p.Name);
+    if (v && v !== 'na') areaNames.push(v);
   });
 
   const stateMatch = x => norm(x.state) === s;
