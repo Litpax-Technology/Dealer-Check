@@ -259,7 +259,7 @@ async function doCheck(pin){
     }
     const poList = data[0].PostOffice;
     const po = poList[0];
-    renderResult(pin, poList, po.District, po.State, findDealer(po.State, po.District, poList));
+    renderResult(pin, poList, po.District, po.State, findDealer(po.State, po.District, poList, pin));
   }catch(err){
     renderError('Network error — PIN lookup fail ho gaya. Internet check karke dobara try karo.');
   }
@@ -267,46 +267,53 @@ async function doCheck(pin){
 
 /* =====================================================================
    3-LEVEL MATCHING (sabse specific pehle):
-   1. City-level  : state + district + PIN ke areas me dealer ki koi city
-   2. District    : state + district match, dealer ki cities BLANK ho
-   3. State-level : state match, dealer ke districts BLANK ho
+   1. City-level  : Cities field me likha ho —
+        • PIN prefix (numbers, e.g. "3020")  → PIN usse shuru ho, YA
+        • city/area naam                      → PIN ke area names me mile
+   2. District    : state + district match, Cities BLANK ho
+   3. State-level : Districts AUR Cities dono BLANK ho
    ===================================================================== */
 const norm = t => String(t || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-function findDealer(state, district, poList){
+function findDealer(state, district, poList, pin){
   const s = norm(state);
   const d = norm(district);
-  // PIN ke matching tokens: sirf area Names
-  // (Block/Taluk use NAHI karte — rural POs me bhi district ka naam hota hai
-  //  jisse galat match hota hai; city POs ke Names me city ka naam hota hai,
-  //  e.g. "Malviya Nagar (Jaipur)", "Mrec Jaipur")
+
+  // Area names — trailing "(District)" tag hata do, kyunki rural areas
+  // me bhi "(Jaipur)" jaisa suffix hota hai jo galat match karata hai
   const areaNames = [];
   (poList || []).forEach(p => {
-    const v = norm(p.Name);
+    const clean = String(p.Name || '').replace(/\s*\([^)]*\)\s*$/, '');
+    const v = norm(clean);
     if (v && v !== 'na') areaNames.push(v);
   });
 
   const stateMatch = x => norm(x.state) === s;
-  const distMatch  = x => Array.isArray(x.districts) && x.districts.length &&
-                          x.districts.some(dd => norm(dd) === d);
+  const distGiven  = x => Array.isArray(x.districts) && x.districts.length > 0;
+  const distMatch  = x => distGiven(x) && x.districts.some(dd => norm(dd) === d);
   const hasCities  = x => Array.isArray(x.cities) && x.cities.length > 0;
 
-  // Level 1: city-level dealer — PIN ke kisi area name me dealer ki city match ho
+  const cityHit = x => x.cities.some(c => {
+    const raw = String(c).trim();
+    if (/^\d{2,6}$/.test(raw)) return String(pin).startsWith(raw);   // PIN prefix
+    const nc = norm(raw);
+    return nc && areaNames.some(a => a === nc || a.includes(nc));     // area name
+  });
+
+  // Level 1: city-level (districts diye hain to district bhi match ho)
   let m = DEALERS.find(x =>
-    stateMatch(x) && distMatch(x) && hasCities(x) &&
-    x.cities.some(c => {
-      const nc = norm(c);
-      return nc && areaNames.some(a => a === nc || a.includes(nc) || nc.includes(a));
-    })
+    stateMatch(x) && hasCities(x) &&
+    (!distGiven(x) || distMatch(x)) &&
+    cityHit(x)
   );
   if (m) return m;
 
-  // Level 2: district-level dealer (cities blank waala hi)
+  // Level 2: district-level (cities blank waala hi)
   m = DEALERS.find(x => stateMatch(x) && distMatch(x) && !hasCities(x));
   if (m) return m;
 
-  // Level 3: state-level dealer (districts blank)
-  m = DEALERS.find(x => stateMatch(x) && (!x.districts || x.districts.length === 0));
+  // Level 3: state-level (districts + cities dono blank)
+  m = DEALERS.find(x => stateMatch(x) && !distGiven(x) && !hasCities(x));
   return m || null;
 }
 
@@ -348,7 +355,7 @@ function renderResult(pin, poList, district, state, m){
       <div class="firm">${esc(m.firm || '')}${m.city ? ' · ' + esc(m.city) : ''}</div>
       ${orderStrip}
       <div class="grid">
-        <div class="item"><div class="k">Territory</div><div class="v">${(m.cities && m.cities.length) ? esc(m.cities.join(', ')) + ' (' + esc(m.districts.join(', ')) + ')' : (m.districts && m.districts.length) ? esc(m.districts.join(', ')) + ' (poora district)' : esc(state) + ' (poori state)'}</div></div>
+        <div class="item"><div class="k">Territory</div><div class="v">${(m.cities && m.cities.length) ? esc(m.cities.join(', ')) + ((m.districts && m.districts.length) ? ' — ' + esc(m.districts.join(', ')) : '') : (m.districts && m.districts.length) ? esc(m.districts.join(', ')) + ' (poora district)' : esc(state) + ' (poori state)'}</div></div>
         <div class="item"><div class="k">Agreement Since</div><div class="v">${esc(m.since || '—')}</div></div>
       </div>
       ${m.phone ? `<a class="call-btn" href="tel:${esc(m.phone)}">📞 ${esc(m.phone)}</a>` : ''}
