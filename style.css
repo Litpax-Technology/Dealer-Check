@@ -288,3 +288,11 @@ footer{margin-top:auto;padding:20px 0 30px;font-size:.74rem;color:var(--ink-soft
   .drow .top{flex-direction:column;}
   .tab{flex:1;text-align:center;padding:12px 8px;}
 }
+
+/* ---------- order status strip ---------- */
+.order-strip{
+  margin:4px 0 16px;padding:12px 16px;border-radius:11px;
+  font-size:.86rem;font-weight:700;line-height:1.45;
+}
+.order-strip.allowed{background:var(--volt-soft);color:#0a7a55;border:1px solid #bfe9d7;}
+.order-strip.blocked{background:var(--red-soft);color:var(--red);border:1px solid #f3c6c6;}
