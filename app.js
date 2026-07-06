@@ -282,10 +282,15 @@ function findDealer(state, district, poList, pin){
   // Area names — trailing "(District)" tag hata do, kyunki rural areas
   // me bhi "(Jaipur)" jaisa suffix hota hai jo galat match karata hai
   const areaNames = [];
+  const divisions = [];
   (poList || []).forEach(p => {
     const clean = String(p.Name || '').replace(/\s*\([^)]*\)\s*$/, '');
     const v = norm(clean);
     if (v && v !== 'na') areaNames.push(v);
+    // Division: badi cities ke liye India Post ka urban marker
+    // e.g. Jaipur city POs = "Jaipur City", rural = "Jaipur Moffusil"
+    const dv = norm(p.Division);
+    if (dv && dv !== 'na') divisions.push(dv);
   });
 
   const stateMatch = x => norm(x.state) === s;
@@ -295,9 +300,14 @@ function findDealer(state, district, poList, pin){
 
   const cityHit = x => x.cities.some(c => {
     const raw = String(c).trim();
-    if (/^\d{2,6}$/.test(raw)) return String(pin).startsWith(raw);   // PIN prefix
+    if (/^\d{2,6}$/.test(raw)) return String(pin).startsWith(raw);   // PIN prefix (optional)
     const nc = norm(raw);
-    return nc && areaNames.some(a => a === nc || a.includes(nc));     // area name
+    if (!nc) return false;
+    // 1) chhote towns: PO area names me naam mile (Chomu, Ellenabad, Bilara...)
+    if (areaNames.some(a => a === nc || a.includes(nc))) return true;
+    // 2) badi cities: Division exact match — "jaipur" ya "jaipurcity" = city,
+    //    "jaipurmoffusil" = rural district → match NAHI hoga
+    return divisions.some(dv => dv === nc || dv === nc + 'city' || dv === nc + 'gpo');
   });
 
   // Level 1: city-level (districts diye hain to district bhi match ho)
